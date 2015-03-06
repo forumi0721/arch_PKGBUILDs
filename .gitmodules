@@ -1,0 +1,12 @@
+[submodule "arch_stonecold_PKGBUILDs"]
+	path = arch_stonecold_PKGBUILDs
+	url = ../arch_stonecold_PKGBUILDs.git
+[submodule "arch_prebuilt_PKGBUILDs"]
+	path = arch_prebuilt_PKGBUILDs
+	url = ../arch_prebuilt_PKGBUILDs.git
+[submodule "arch_meta_PKGBUILDs"]
+	path = arch_meta_PKGBUILDs
+	url = ../arch_meta_PKGBUILDs.git
+[submodule "arch_bananapi_PKGBUILDs"]
+	path = arch_bananapi_PKGBUILDs
+	url = ../arch_bananapi_PKGBUILDs.git
