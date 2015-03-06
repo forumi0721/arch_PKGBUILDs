@@ -1,0 +1,53 @@
+# Maintainer: StoneCold <forumi0721[at]gmail[dot]com>
+
+#pkgbase=""
+pkgname=("sample")
+pkgver=0.1
+pkgrel=1
+pkgdesc=""
+arch=("")
+url=""
+license=("")
+#groups=("")
+depends=("")
+optdepends=("")
+makedepends=("")
+#checkdepends=("")
+provides=("")
+conflicts=("")
+#replaces=("")
+backup=("")
+options=("")
+install="${pkgname}.install"
+#changelog=""
+source=("")
+#noextract=("${source[@]%%::*}")
+md5sums=("")
+#sha1sums=("")
+#sha256sums=("")
+#sha384sums=("")
+#sha512sum=("")
+
+#option : strip, docs, libtool, staticlibs, emptydirs, zipman, upx, ccache, distcc, buildflags, makeflags, debug
+#message : msg, msg2, warning, error, plan
+#dir : srcdir, pkgdir, startdir
+
+prepare() {
+}
+
+build() {
+	cd "${srcdir}"/"${pkgname}"-"${pkgver}"
+	cmake ./ -DCMAKE_INSTALL_PREFIX=/usr
+	make
+}
+
+check() {
+}
+
+package() {
+	cd "${srcdir}"/"${pkgname}"-"${pkgver}"
+	make DESTDIR="${pkgdir}" install
+	install -Dm644 COPYING "$pkgdir/usr/share/licenses/$pkgname/COPYING"
+}
+
+# vim:set ts=2 sw=2 et:
