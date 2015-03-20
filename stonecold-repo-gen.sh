@@ -10,7 +10,7 @@ fi
 REPO_NAME="StoneCold"
 LOCAL_REPO="stonecold-repo"
 #TARGET_ARCH=("i686" "x86_64" "arm" "armv6h" "armv7h")
-TARGET_ARCH=("x86_64" "armv7h")
+TARGET_ARCH=("x86_64" "arm" "armv6h" "armv7h")
 PKGS="pkgs"
 FINDOPTION="-name \"*-any.pkg.tar.*\""
 for arch in ${TARGET_ARCH[@]}
