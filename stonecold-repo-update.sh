@@ -59,7 +59,7 @@ function CheckVersion {
 
 	local tempdir="$(mktemp -d)"
 	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
-	if [ "$?" != "0" ]; then
+	if [ "$?" != "0" ] || [ ! -e "${downloadpath}" ]; then
 		echo ${downloadpath}
 		rm -rf "${temp}"
 		return 1
