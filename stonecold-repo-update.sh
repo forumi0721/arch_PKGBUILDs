@@ -61,7 +61,7 @@ function CheckVersion {
 	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
 	if [ "$?" != "0" ] || [ ! -e "${downloadpath}" ]; then
 		echo ${downloadpath}
-		rm -rf "${temp}"
+		rm -rf "${tempdir}"
 		return 1
 	fi
 
@@ -81,7 +81,7 @@ function CheckVersion {
 	if [ ! -z "$(echo "${pkgver2}" | grep "$(date +'%Y%m%d')\.[0-9]\+")" ]; then
 		echo "Date type pkgver"
 		echo
-		rm -rf "${temp}"
+		rm -rf "${tempdir}"
 		rm -rf /var/tmp/makepkg-${USER}
 		return 1
 	fi
@@ -117,7 +117,7 @@ function CheckVersion {
 	#Cleanup
 	echo "Cleanup..."
 	rm -rf /var/tmp/makepkg-${USER}
-	rm -rf "${temp}"
+	rm -rf "${tempdir}"
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
@@ -176,6 +176,23 @@ function Download {
 			rm -rf "${tempdir}/${sourcebase}"
 		done
 		if [ ! -e "${tempdir}/${sourcebase}" ]; then
+			echo "Cannot get source"
+			popd &> /dev/null
+			return 1
+		fi
+		retvalue="${sourcebase}"
+		popd &> /dev/null
+	elif [ "${sourcetype}" = "GIT" ]; then
+		pushd . &> /dev/null
+		cd "${tempdir}"
+		for cnt in {1..10}
+		do
+			git clone "${sourcepath}" "${sourcebase}"
+			if [ "$?" = "0" ]; then
+				break;
+			fi
+		done
+		if [ ! -e "${sourcebase}" ]; then
 			echo "Cannot get source"
 			popd &> /dev/null
 			return 1
