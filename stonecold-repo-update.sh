@@ -14,10 +14,17 @@ function CheckVersion {
 		return 1
 	fi
 
-	if [ ! -z "$(grep '^_localpkgver=Y$' "${pkgfile}")" ]; then
+	if [ ! -z "$(grep '^_localpkgbuild=Y$' "${pkgfile}")" ]; then
 		echo "Skip"
 		echo
 		return 1 
+	fi
+	if [ -e "${pkgdir}/SOURCE" ]; then
+		if [ ! -z "$(grep '^LOCALPKGBUILD="Y"$' ${pkgdir}/SOURCE)" ]; then
+			echo "Skip"
+			echo
+			return 1 
+		fi
 	fi
 
 	local pkgver1="$(grep '^pkgver=' "${pkgfile}" | cut -f 2 -d '=')"
@@ -264,7 +271,7 @@ function GetNewVersion {
 }
 
 UPDATE_LIST=
-for src in $(find . -name PKGBUILD | sort)
+for src in $(find . -name PKGBUILD -not -path "./arch_meta_PKGBUILDs/*" | sort)
 do
 	CheckVersion "${src}"
 	if [ "$?" = "2" ]; then
