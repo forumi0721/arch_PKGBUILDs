@@ -152,6 +152,24 @@ function Download {
 		cd "${tempdir}"
 		retvalue=$(ls -d */ | cut -d '/' -f 1)
 		popd &> /dev/null
+	elif [ "${sourcetype}" = "RSYNC" ]; then
+		pushd . &> /dev/null
+		cd "${tempdir}"
+		for cnt in {1..10}
+		do
+			rsync -mrt "${sourcepath}"/* "${sourcebase}" &> /dev/null
+			if [ "$?" = "0" ]; then
+				break;
+			fi
+			rm -rf "${tempdir}/${sourcebase}"
+		done
+		if [ ! -e "${tempdir}/${sourcebase}" ]; then
+			echo "Cannot get source"
+			popd &> /dev/null
+			return 1
+		fi
+		retvalue="${sourcebase}"
+		popd &> /dev/null
 	elif [ "${sourcetype}" = "AUR" ]; then
 		for cnt in {1..10}
 		do
