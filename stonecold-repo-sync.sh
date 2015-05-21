@@ -11,7 +11,7 @@ RSYNC_SVR=192.168.0.21
 RSYNC_PATH=/mnt/VOL1/nas_htdocs/arch/StoneCold
 
 echo "rsync start..."
-rsync -avrh --progress ${LOCAL_REPO}/* ${RSYNC_ID}@${RSYNC_SVR}:${RSYNC_PATH}
+rsync -avrh --delete --progress ${LOCAL_REPO}/* ${RSYNC_ID}@${RSYNC_SVR}:${RSYNC_PATH}
 echo "Done"
 echo
 
