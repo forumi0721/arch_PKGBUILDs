@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 if [ -z "$(which rsync)" ]; then
 	echo "Cannot found rsync"

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 #Validation
 if [ -z "$(which repo-add 2> /dev/null)" ]; then
