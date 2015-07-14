@@ -64,7 +64,7 @@ function CheckVersion {
 	#GetSource
 	echo "Get source..."
 
-	local tempdir="$(mktemp -d)"
+	local tempdir="$(mktemp -p /var/tmp -d)"
 	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
 	if [ "$?" != "0" ] || [ ! -e "${downloadpath}" ]; then
 		echo ${downloadpath}
@@ -262,7 +262,8 @@ function ProcessPkgVer {
 	unalias eval
 	if [ ! -z "$(declare -f pkgver)" ]; then
 		echo "Process makepkg..."
-		BUILDDIR=/var/tmp/makepkg-${USER} SRCDEST=/var/tmp/makepkg-${USER} makepkg --nobuild -Acdf &> /dev/null
+		#BUILDDIR=/var/tmp/makepkg-${USER} SRCDEST=/var/tmp/makepkg-${USER} makepkg --nobuild -Acdf &> /dev/null
+		makepkg --nobuild -Acdf > /dev/null
 		echo "Done"
 	fi
 	unset pkgver
