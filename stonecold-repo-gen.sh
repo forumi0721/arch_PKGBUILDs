@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+echo_red() {
+	echo -e "\e[0;31m${1}\e[0m"
+}
+
+echo_green() {
+	echo -e "\e[0;32m${1}\e[0m"
+}
+
+echo_blue() {
+	echo -e "\e[0;34m${1}\e[0m"
+}
+
 #Validation
 if [ -z "$(which repo-add 2> /dev/null)" ]; then
 	echo "command not found : repo-add"
@@ -21,13 +33,13 @@ done
 function GenerateRepo {
 	if [ ! -d "${LOCAL_REPO}" ]; then
 		rm -rf "${LOCAL_REPO}"
-		echo "Make directory - ${LOCAL_REPO}"
+		echo_blue "Make directory - ${LOCAL_REPO}"
 		mkdir -p "${LOCAL_REPO}"
 	fi
 
 	if [ ! -d "${LOCAL_REPO}/${PKGS}" ]; then
 		rm -rf "${LOCAL_REPO}/${PKGS}"
-		echo "Make directory ${LOCAL_REPO}/${PKGS}"
+		echo_blue "Make directory ${LOCAL_REPO}/${PKGS}"
 		mkdir -p "${LOCAL_REPO}/${PKGS}"
 	fi
 
@@ -35,27 +47,27 @@ function GenerateRepo {
 	do
 		if [ ! -d "${LOCAL_REPO}/${arch}" ]; then
 			rm -rf "${LOCAL_REPO}/${arch}"
-			echo "Make directory ${LOCAL_REPO}/${arch}"
+			echo_blue "Make directory ${LOCAL_REPO}/${arch}"
 			mkdir -p "${LOCAL_REPO}/${arch}"
 		fi
 		if [ ! -f "${LOCAL_REPO}/${arch}/${REPO_NAME}.db.tar.gz" ]; then
 			rm -rf "${LOCAL_REPO}/${arch}/${REPO_NAME}.db.tar.gz"
-			echo "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.db.tar.gz"
+			echo_blue "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.db.tar.gz"
 			tar zcf "${LOCAL_REPO}/${arch}/${REPO_NAME}.db.tar.gz" --files-from /dev/null
 		fi
 		if [ ! -e "${LOCAL_REPO}/${arch}/${REPO_NAME}.db" ]; then
 			rm -rf "${LOCAL_REPO}/${arch}/${REPO_NAME}.db"
-			echo "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.db"
+			echo_blue "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.db"
 			ln -s "${REPO_NAME}.db.tar.gz" "${LOCAL_REPO}/${arch}/${REPO_NAME}.db"
 		fi
 		if [ ! -f "${LOCAL_REPO}/${arch}/${REPO_NAME}.files.tar.gz" ]; then
 			rm -rf "${LOCAL_REPO}/${arch}/${REPO_NAME}.files.tar.gz"
-			echo "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.files.tar.gz"
+			echo_blue "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.files.tar.gz"
 			tar zcf "${LOCAL_REPO}/${arch}/${REPO_NAME}.files.tar.gz" --files-from /dev/null
 		fi
 		if [ ! -e "${LOCAL_REPO}/${arch}/${REPO_NAME}.files" ]; then
 			rm -rf "${LOCAL_REPO}/${arch}/${REPO_NAME}.files"
-			echo "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.files"
+			echo_blue "Make ${LOCAL_REPO}/${arch}/${REPO_NAME}.files"
 			ln -s "${REPO_NAME}.files.tar.gz" "${LOCAL_REPO}/${arch}/${REPO_NAME}.files"
 		fi
 	done
@@ -67,7 +79,7 @@ function GenerateRepo {
 	done
 	for remove in $($lscmd)
 	do
-		echo "Remove ${LOCAL_REPO}/${remove}"
+		echo_blue "Remove ${LOCAL_REPO}/${remove}"
 		rm -rf "${LOCAL_REPO}/${remove}"
 	done
 }
@@ -77,7 +89,7 @@ function RemovePkgFromRepo {
 	local findcmd="find \"${LOCAL_REPO}/${PKGS}\" -mindepth 1 ! \\( ${FINDOPTION} \\)"
 	for pkg in $(eval ${findcmd})
 	do
-		echo "Remove ${pkg}"
+		echo_blue "Remove ${pkg}"
 		rm -rf "${pkg}"
 	done
 
@@ -88,7 +100,7 @@ function RemovePkgFromRepo {
 	for pkg in $(eval ${findcmd})
 	do
 		if [ -z "$(echo "${findresult[@]}" | grep "${pkg}")" ]; then
-			echo "Remove ${LOCAL_REPO}/${PKGS}/${pkg}"
+			echo_blue "Remove ${LOCAL_REPO}/${PKGS}/${pkg}"
 			rm -rf "${LOCAL_REPO}/${PKGS}/${pkg}"
 		fi
 	done
@@ -105,11 +117,11 @@ function RemoveLinkFromRepo {
 		do
 			if [ -L "${pkg}" ]; then
 				if [ ! -e "$(readlink ${pkg})" ]; then
-					echo "Remove ${pkg}"
+					echo_blue "Remove ${pkg}"
 					rm -rf "${pkg}"
 				fi
 			else
-				echo "Remove ${pkg}"
+				echo_blue "Remove ${pkg}"
 				rm -rf "${pkg}"
 			fi
 		done
@@ -154,7 +166,7 @@ function AddPkgToRepo {
 	do
 		local file="$(basename "${pkg}")"
 		if [ ! -e "${LOCAL_REPO}/${PKGS}/${file}" ]; then
-			echo "Copy ${pkg}"
+			echo_blue "Copy ${pkg}"
 			cp -a "${pkg}" "${LOCAL_REPO}/${PKGS}/${file}"
 		fi
 	done
@@ -171,13 +183,13 @@ function AddLinkToRepo {
 			for arch in ${TARGET_ARCH[@]}
 			do
 				if [ ! -e "${LOCAL_REPO}/${arch}/${pkgfile}" ]; then
-					echo "Link ${LOCAL_REPO}/${arch}/${pkgfile}"
+					echo_blue "Link ${LOCAL_REPO}/${arch}/${pkgfile}"
 					ln -sf "../${PKGS}/${pkgfile}" "${LOCAL_REPO}/${arch}/${pkgfile}"
 				fi
 			done
 		elif [ -d "${LOCAL_REPO}/${pkgarch}" ]; then
 			if [ ! -e "${LOCAL_REPO}/${pkgarch}/${pkgfile}" ]; then
-				echo "Link ${LOCAL_REPO}/${pkgarch}/${pkgfile}"
+				echo_blue "Link ${LOCAL_REPO}/${pkgarch}/${pkgfile}"
 				ln -sf "../${PKGS}/${pkgfile}" "${LOCAL_REPO}/${pkgarch}/${pkgfile}"
 			fi
 		fi
@@ -221,44 +233,36 @@ function ClearRepo {
 
 
 #Main
-echo "Generate repository"
+echo_green "Generate repository"
 GenerateRepo
-echo "Done"
 echo
 
-echo "Remove pkg from repository"
+echo_green "Remove pkg from repository"
 RemovePkgFromRepo
-echo "Done"
 echo
 
-echo "Remove link from repository"
+echo_green "Remove link from repository"
 RemoveLinkFromRepo
-echo "Done"
 echo
 
-echo "Remove pkg from DB"
+echo_green "Remove pkg from DB"
 RemovePkgFromDb
-echo "Done"
 echo
 
-echo "Add package to repository"
+echo_green "Add package to repository"
 AddPkgToRepo
-echo "Done"
 echo
 
-echo "Add link to repository"
+echo_green "Add link to repository"
 AddLinkToRepo
-echo "Done"
 echo
 
-echo "Add pkg to db"
+echo_green "Add pkg to db"
 AddPkgToDb
-echo "Done"
 echo
 
-echo "Clear repository"
+echo_green "Clear repository"
 ClearRepo
-echo "Done"
 echo
 
 exit 0

@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 
-function CheckVersion {
+echo_red() {
+	echo -e "\e[0;31m${1}\e[0m"
+}
+
+echo_green() {
+	echo -e "\e[0;32m${1}\e[0m"
+}
+
+echo_blue() {
+	echo -e "\e[0;34m${1}\e[0m"
+}
+
+CheckVersion() {
 	local retvalue=
 	local pkgfile="${1}"
 	local pkgdir="$(dirname "${pkgfile}")"
@@ -9,19 +21,19 @@ function CheckVersion {
 
 	#Get current version
 	if [ ! -e "${pkgfile}" ]; then
-		echo "Cannot find PKGBUILD"
+		echo_red "Cannot find PKGBUILD"
 		echo
 		return 1
 	fi
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		if [ ! -z "$(grep '^LOCALPKGVER="Y"$' ${pkgdir}/SOURCE)" ]; then
-			echo "Skip"
+			echo_blue "Skip"
 			echo
 			return 1 
 		fi
 		if [ ! -z "$(grep '^LOCALPKGVER=Y$' ${pkgdir}/SOURCE)" ]; then
-			echo "Skip"
+			echo_blue "Skip"
 			echo
 			return 1 
 		fi
@@ -29,18 +41,17 @@ function CheckVersion {
 
 	local pkgver1="$(grep '^pkgver=' "${pkgfile}" | cut -f 2 -d '=')"
 	if [ -z "${pkgver1}" ]; then
-		echo "Cannot get pkgver in PKGBUILD"
+		echo_red "Cannot get pkgver in PKGBUILD"
 		echo
 		return 1 
 	fi
 
 	#Import function
-	echo "Import settings..."
+	echo_green "Import settings..."
 
 	local sourcetype=
 	local sourcepath=
 
-	unset LOCALPKG
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
@@ -50,61 +61,67 @@ function CheckVersion {
 
 		sourcetype=${SOURCETYPE}
 		if [ "${sourcetype}" = "local" ]; then
-			sourcepath=${pkgdir}
+			sourcepath="${pkgdir}"
 		else
-			sourcepath=${SOURCEPATH}
+			sourcepath="${SOURCEPATH}"
 		fi
-	else
-		sourcetype="local"
-		sourcepath=${pkgdir}
 	fi
 
-	echo "Done"
+	if [ -z "${sourcetype}" ]; then
+		sourcetype="local"
+	fi
+	if [ -z "${sourcepath}" ]; then
+		sourcepath="${pkgdir}"
+	fi
 
-	#CheckLOCALPKGVER
-	if [ ! -z "${LOCALPKGVER}" -a "${LOCALPKGVER}" != "Y" ]; then
-		echo "Skip"
+	if [ "${LOCALPKGVER}" = "Y" ]; then
+		echo_blue "Skip"
 		echo
 		return 1 
 	fi
 
 	#GetSource
-	echo "Get source..."
+	echo_green "Get source..."
 
 	local tempdir="$(mktemp -p /var/tmp -d)"
 	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
-	if [ "$?" != "0" -o ! -e "${downloadpath}" ]; then
-		echo ${downloadpath}
-		rm -rf "${tempdir}"
+	if [ "$?" = "1" ]; then
+		echo_red "Cannot find source"
+		return 1
+	elif [ "$?" = "2" ]; then
+		echo_red "Cannot get source"
+		return 1
+	elif [ "$?" = "3" ]; then
+		echo_red "Unknown source type"
 		return 1
 	fi
 
-	echo "Done"
+	if [ ! -e "${downloadpath}" ]; then
+		echo_red "${downloadpath}"
+		rm -rf "${tempdir}"
+		return 1
+	fi
 
 	#GetNewPkgversion
-	echo "Get new version..."
+	echo_green "Get new version..."
 
 	ProcessPkgVer "${downloadpath}"
-	local pkgver2="$(GetNewVersion "${downloadpath}")"
-
-	echo "Done"
-
-	#Check
-	echo "Compare version..."
-
-	if [ ! -z "$(echo "${pkgver2}" | grep "$(date +'%Y%m%d')\.[0-9]\+")" ]; then
-		echo "Date type pkgver"
-		echo
-		rm -rf "${tempdir}"
+	if [ "$?" != "0" ]; then
+		echo_red "Failed"
 		return 1
 	fi
+
+	#Check
+	echo_green "Compare version..."
+
+	local pkgver2="$(GetNewVersion "${downloadpath}")"
 
 	if [ "${pkgver1}" = "${pkgver2}" ]; then
 		retvalue=0
-		echo "Already up-to-date."
+		echo_green "Already up-to-date."
 	else
 		retvalue=2
-		echo "Update..."
+		echo_blue "Update..."
 		pushd . &> /dev/null
 		cd "${pkgdir}"
 		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=SOURCE)
@@ -119,28 +136,25 @@ function CheckVersion {
 			cp -ar "${downloadpath}/${f}" ./
 		done
 		if [ ! -z "$(declare -f GetSourcePatch)" ]; then
-			echo "Apply patch..."
+			echo_blue "Apply patch..."
 			GetSourcePatch
 		fi
 		popd &> /dev/null
 	fi
 
-	echo "Done"
-
 	#Cleanup
-	echo "Cleanup..."
+	echo_green "Cleanup..."
 	rm -rf "${tempdir}"
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
-	echo "Done"
 
 	echo
 
 	return ${retvalue}
 }
 
-function Download {
+Download() {
 	local retvalue=
 	local tempdir="${1}"
 	local sourcetype="${2}"
@@ -149,7 +163,7 @@ function Download {
 
 	if [ "${sourcetype}" = "ABS" ]; then
 		if [ ! -e "${sourcepath}" ]; then
-			echo "Cannot find source"
+			#echo "Cannot find source"
 			return 1
 		fi
 		cp -r "${sourcepath}" "${tempdir}/"
@@ -169,9 +183,9 @@ function Download {
 			rm -rf "${tempdir}/${sourcebase}"
 		done
 		if [ ! -e "${tempdir}/${sourcebase}" ]; then
-			echo "Cannot get source"
+			#echo "Cannot get source"
 			popd &> /dev/null
-			return 1
+			return 2
 		fi
 		retvalue="${sourcebase}"
 		popd &> /dev/null
@@ -185,8 +199,8 @@ function Download {
 			rm -rf "${tempdir}/${sourcebase}"
 		done
 		if [ ! -e "${tempdir}/${sourcebase}" ]; then
-			echo "Cannot get source"
-			return 1
+			#echo "Cannot get source"
+			return 2
 		fi
 		pushd . &> /dev/null
 		cd "${tempdir}"
@@ -206,9 +220,9 @@ function Download {
 			rm -rf "${tempdir}/${sourcebase}"
 		done
 		if [ ! -e "${tempdir}/${sourcebase}" ]; then
-			echo "Cannot get source"
+			#echo "Cannot get source"
 			popd &> /dev/null
-			return 1
+			return 2
 		fi
 		retvalue="${sourcebase}"
 		popd &> /dev/null
@@ -223,15 +237,15 @@ function Download {
 			fi
 		done
 		if [ ! -e "${sourcebase}" ]; then
-			echo "Cannot get source"
+			#echo "Cannot get source"
 			popd &> /dev/null
-			return 1
+			return 2
 		fi
 		retvalue="${sourcebase}"
 		popd &> /dev/null
 	elif [ "${sourcetype}" = "local" ]; then
 		if [ ! -e "${sourcepath}" ]; then
-			echo "Cannot find source"
+			#echo "Cannot find source"
 			return 1
 		fi
 		pushd . &> /dev/null
@@ -244,8 +258,8 @@ function Download {
 		popd &> /dev/null
 		retvalue="${sourcebase}"
 	else
-		echo "Unknown source type"
-		return 1
+		#echo "Unknown source type"
+		return 3
 	fi
 
 	echo "${tempdir}/${retvalue}"
@@ -253,7 +267,7 @@ function Download {
 	return 0
 }
 
-function ProcessPkgVer {
+ProcessPkgVer() {
 	local retvalue=
 	local downloadpath="${1}"
 
@@ -266,9 +280,12 @@ function ProcessPkgVer {
 	L_ENV_DISABLE_PROMPT=1 source ./PKGBUILD &> /dev/null
 	unalias eval
 	if [ ! -z "$(declare -f pkgver)" ]; then
-		echo "Process makepkg..."
 		makepkg --nobuild -Acdf > /dev/null
-		echo "Done"
+		if [ "$?" != "0" ]; then
+			retvalue=1
+		else
+			retvalue=0
+		fi
 	fi
 	unset pkgver
 	unset -f pkgver
@@ -278,7 +295,7 @@ function ProcessPkgVer {
 	return 0
 }
 
-function GetNewVersion {
+GetNewVersion() {
 	local retvalue=
 	local downloadpath="${1}"
 
@@ -303,10 +320,10 @@ do
 done
 
 if [ ! -z "${UPDATE_LIST}" ]; then
-	echo "Update List"
+	echo_green "Update List"
 	for update in ${UPDATE_LIST[@]}
 	do
-		echo "${update}"
+		echo_blue "${update}"
 	done
 fi
 

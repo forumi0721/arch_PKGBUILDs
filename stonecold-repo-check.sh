@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+echo_red() {
+	echo -e "\e[0;31m${1}\e[0m"
+}
+
+echo_green() {
+	echo -e "\e[0;32m${1}\e[0m"
+}
+
+echo_blue() {
+	echo -e "\e[0;34m${1}\e[0m"
+}
+
 check() {
 	local dir="$(dirname "${1}")"
 	local files=
@@ -22,6 +34,12 @@ check() {
 	do
 		for arch in ${arch[@]}
 		do
+			if [ "${arch}" != "any" -a "${arch}" != "i686" -a "${arch}" != "x86_64" -a "${arch}" != "arm" -a "${arch}" != "armv6h" -a "${arch}" != "armv7h" ]; then
+				continue
+			fi
+			if [ "${name}" = "netatalk" -a "${arch/arm/}" != "${arch}" ]; then
+				continue
+			fi
 			if [ -z "${epoch}" ]; then
 				files+=("$(echo ${name}-${pkgver}-${pkgrel}-${arch}.pkg.tar.xz)")
 			else
@@ -54,12 +72,12 @@ check() {
 
 	#echo ${1}
 	if [ ${#list1[@]} -gt 1 -o ${#list2[@]} -gt 1 ]; then
-		echo ${1}
+		echo_green ${1}
 		if [ ${#list1[@]} -gt 1 ]; then
 			for list in ${list1[@]}
 			do
 				if [ ! -z "${list}" ]; then
-					echo "Need build : ${list}"
+					echo_red "Need build : ${list}"
 				fi
 			done
 		fi
@@ -67,10 +85,11 @@ check() {
 			for list in ${list2[@]}
 			do
 				if [ ! -z "${list}" ]; then
-					echo "Invalid : ${list}"
+					echo_red "Invalid : ${list}"
 				fi
 			done
 		fi
+		echo
 	fi
 
 	popd &>/dev/null
