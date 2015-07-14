@@ -14,13 +14,13 @@ function CheckVersion {
 		return 1
 	fi
 
-	if [ ! -z "$(grep '^_localpkgbuild=Y$' "${pkgfile}")" ]; then
-		echo "Skip"
-		echo
-		return 1 
-	fi
 	if [ -e "${pkgdir}/SOURCE" ]; then
-		if [ ! -z "$(grep '^LOCALPKGBUILD="Y"$' ${pkgdir}/SOURCE)" ]; then
+		if [ ! -z "$(grep '^LOCALPKGVER="Y"$' ${pkgdir}/SOURCE)" ]; then
+			echo "Skip"
+			echo
+			return 1 
+		fi
+		if [ ! -z "$(grep '^LOCALPKGVER=Y$' ${pkgdir}/SOURCE)" ]; then
 			echo "Skip"
 			echo
 			return 1 
@@ -40,33 +40,40 @@ function CheckVersion {
 	local sourcetype=
 	local sourcepath=
 
-	unset OWNER
+	unset LOCALPKG
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		L_ENV_DISABLE_PROMPT=1 source "${pkgdir}/SOURCE"
-		if [ "${OWNER}" = "Y" ]; then
-			sourcetype="local"
-			sourcepath="${pkgdir}"
+
+		sourcetype=${SOURCETYPE}
+		if [ "${sourcetype}" = "local" ]; then
+			sourcepath=${pkgdir}
 		else
-			sourcetype=${SOURCETYPE}
 			sourcepath=${SOURCEPATH}
 		fi
 	else
 		sourcetype="local"
-		sourcepath="${pkgdir}"
+		sourcepath=${pkgdir}
 	fi
 
 	echo "Done"
+
+	#CheckLOCALPKGVER
+	if [ ! -z "${LOCALPKGVER}" -a "${LOCALPKGVER}" != "Y" ]; then
+		echo "Skip"
+		echo
+		return 1 
+	fi
 
 	#GetSource
 	echo "Get source..."
 
 	local tempdir="$(mktemp -p /var/tmp -d)"
 	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
-	if [ "$?" != "0" ] || [ ! -e "${downloadpath}" ]; then
+	if [ "$?" != "0" -o ! -e "${downloadpath}" ]; then
 		echo ${downloadpath}
 		rm -rf "${tempdir}"
 		return 1
@@ -89,7 +96,6 @@ function CheckVersion {
 		echo "Date type pkgver"
 		echo
 		rm -rf "${tempdir}"
-		rm -rf /var/tmp/makepkg-${USER}
 		return 1
 	fi
 
@@ -123,7 +129,6 @@ function CheckVersion {
 
 	#Cleanup
 	echo "Cleanup..."
-	rm -rf /var/tmp/makepkg-${USER}
 	rm -rf "${tempdir}"
 	unset SOURCETYPE
 	unset SOURCEPATH
@@ -262,7 +267,6 @@ function ProcessPkgVer {
 	unalias eval
 	if [ ! -z "$(declare -f pkgver)" ]; then
 		echo "Process makepkg..."
-		#BUILDDIR=/var/tmp/makepkg-${USER} SRCDEST=/var/tmp/makepkg-${USER} makepkg --nobuild -Acdf &> /dev/null
 		makepkg --nobuild -Acdf > /dev/null
 		echo "Done"
 	fi
@@ -305,6 +309,8 @@ if [ ! -z "${UPDATE_LIST}" ]; then
 		echo "${update}"
 	done
 fi
+
+unset UPDATE_LIST
 
 exit 0
 
