@@ -1,53 +1,77 @@
 #!/usr/bin/env bash
 
+echo_white() {
+	echo -e "\e[01;0m${1}\e[0m${2}"
+}
+
+echo_gray() {
+	echo -e "\e[01;30m${1}\e[0m${2}"
+}
+
 echo_red() {
-	echo -e "\e[0;31m${1}\e[0m"
+	echo -e "\e[01;31m${1}\e[0m${2}"
 }
 
 echo_green() {
-	echo -e "\e[0;32m${1}\e[0m"
+	echo -e "\e[01;32m${1}\e[0m${2}"
+}
+
+echo_yellow() {
+	echo -e "\e[01;33m${1}\e[0m${2}"
 }
 
 echo_blue() {
-	echo -e "\e[0;34m${1}\e[0m"
+	echo -e "\e[01;34m${1}\e[0m${2}"
 }
 
-CheckVersion() {
-	local retvalue=
+echo_violet() {
+	echo -e "\e[01;35m${1}\e[0m ${2}"
+}
+
+echo_cyan() {
+	echo -e "\e[01;36m${1}\e[0m${2}"
+}
+
+
+#Function
+fn_check_version() {
+	local retvalue=0
+
 	local pkgfile="${1}"
 	local pkgdir="$(dirname "${pkgfile}")"
 
-	echo "Package Path : ${pkgdir}"
+	rm -rf /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
 
-	#Get current version
-	if [ ! -e "${pkgfile}" ]; then
-		echo_red "Cannot find PKGBUILD"
-		echo
+	#Validation
+	if [ -e "/var/tmp/makepkg-repo-build-${USER}" ]; then
+		echo_red "Cannot delete /var/tmp/makepkg-repo-build-${USER}"
+		return 1
+	fi
+	if [ -e "/var/tmp/makepkg-repo-src-${USER}" ]; then
+		echo_red "Cannot delete /var/tmp/makepkg-repo-src-${USER}"
 		return 1
 	fi
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		if [ ! -z "$(grep '^LOCALPKGVER="Y"$' ${pkgdir}/SOURCE)" ]; then
-			echo_blue "Skip"
-			echo
+			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
 			return 1 
 		fi
 		if [ ! -z "$(grep '^LOCALPKGVER=Y$' ${pkgdir}/SOURCE)" ]; then
-			echo_blue "Skip"
-			echo
+			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
 			return 1 
 		fi
 	fi
 
+	#Get current pkgver
 	local pkgver1="$(grep '^pkgver=' "${pkgfile}" | cut -f 2 -d '=')"
 	if [ -z "${pkgver1}" ]; then
 		echo_red "Cannot get pkgver in PKGBUILD"
-		echo
 		return 1 
 	fi
 
-	#Import function
-	echo_green "Import settings..."
+	#Import setting
+	echo_blue " -> " "Import setting..."
 
 	local sourcetype=
 	local sourcepath=
@@ -58,6 +82,11 @@ CheckVersion() {
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		L_ENV_DISABLE_PROMPT=1 source "${pkgdir}/SOURCE"
+
+		if [ "${LOCALPKGVER}" = "Y" ]; then
+			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
+			return 1 
+		fi
 
 		sourcetype=${SOURCETYPE}
 		if [ "${sourcetype}" = "local" ]; then
@@ -74,87 +103,109 @@ CheckVersion() {
 		sourcepath="${pkgdir}"
 	fi
 
-	if [ "${LOCALPKGVER}" = "Y" ]; then
-		echo_blue "Skip"
-		echo
-		return 1 
-	fi
-
 	#GetSource
-	echo_green "Get source..."
+	echo_blue " -> " "Get source..."
 
 	local tempdir="$(mktemp -p /var/tmp -d)"
-	local downloadpath="$(Download "${tempdir}" "${sourcetype}" "${sourcepath}")"
+	local downloadpath="$(fn_download "${tempdir}" "${sourcetype}" "${sourcepath}")"
 	if [ "$?" = "1" ]; then
 		echo_red "Cannot find source"
+		rm -rf "${tempdir}"
 		return 1
 	elif [ "$?" = "2" ]; then
 		echo_red "Cannot get source"
+		rm -rf "${tempdir}"
 		return 1
 	elif [ "$?" = "3" ]; then
 		echo_red "Unknown source type"
+		rm -rf "${tempdir}"
 		return 1
 	fi
 
 	if [ ! -e "${downloadpath}" ]; then
-		echo_red "${downloadpath}"
+		echo_red "Cannot found download path : ${downloadpath}"
 		rm -rf "${tempdir}"
 		return 1
 	fi
 
 	#GetNewPkgversion
-	echo_green "Get new version..."
+	echo_blue " -> " "Get new version..."
 
-	ProcessPkgVer "${downloadpath}"
-	if [ "$?" != "0" ]; then
-		echo_red "Failed"
-		return 1
+	pushd . &> /dev/null
+	cd "${downloadpath}"
+	
+	unset pkgver
+	unset -f pkgver
+	alias eval="echo"
+	L_ENV_DISABLE_PROMPT=1 source ./PKGBUILD &> /dev/null
+	unalias eval
+	if [ ! -z "$(declare -f pkgver)" ]; then
+		echo_yellow " -> " "Execute makepkg..."
+		mkdir -p /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
+		BUILDDIR=/var/tmp/makepkg-repo-build-${USER} SRCDEST=/var/tmp/makepkg-repo-src-${USER} makepkg --nobuild -Acdf &> /dev/null
+		if [ "$?" != "0" ]; then
+			echo_red "makepkg failed"
+			rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
+			return 1
+		fi
+	fi
+	unset pkgver
+	unset -f pkgver
+
+	local pkgver2="$(grep '^pkgver=' PKGBUILD | cut -f 2 -d '=')"
+	if [ -z "${pkgver2}" ]; then
+		echo_red "Cannot get pkgver in PKGBUILD"
+		rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
+		return 1 
 	fi
 
-	#Check
-	echo_green "Compare version..."
+	popd &> /dev/null
 
-	local pkgver2="$(GetNewVersion "${downloadpath}")"
+	#Check
+	echo_blue " -> " "Compare version..."
 
 	if [ "${pkgver1}" = "${pkgver2}" ]; then
 		retvalue=0
-		echo_green "Already up-to-date."
+		echo_blue " -> " "Already up-to-date."
 	else
 		retvalue=2
-		echo_blue "Update..."
+		echo_cyan " -> " "Current version : ${pkgver1}"
+		echo_cyan " -> " "New version : ${pkgver1}"
+		echo_yellow " -> " "Update..."
 		pushd . &> /dev/null
 		cd "${pkgdir}"
-		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=SOURCE)
+		local f=
+		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=*.src.tar.* --ignore=*.bin.tar.* --ignore=SOURCE)
 		do
 			rm -rf ${f}
 		done
 		popd &> /dev/null
 		pushd . &> /dev/null
 		cd "${pkgdir}"
-		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=SOURCE --ignore=.svn --ignore=.git "${downloadpath}")
+		local f=
+		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=*.src.tar.* --ignore=*.bin.tar.* --ignore=SOURCE --ignore=.svn --ignore=.git "${downloadpath}")
 		do
 			cp -ar "${downloadpath}/${f}" ./
 		done
 		if [ ! -z "$(declare -f GetSourcePatch)" ]; then
-			echo_blue "Apply patch..."
+			echo_yellow " -> " "Apply patch..."
 			GetSourcePatch
 		fi
 		popd &> /dev/null
 	fi
 
 	#Cleanup
-	echo_green "Cleanup..."
-	rm -rf "${tempdir}"
+	echo_blue " -> " "Cleanup..."
+	rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
 
-	echo
-
 	return ${retvalue}
 }
 
-Download() {
+#Function
+fn_download() {
 	local retvalue=
 	local tempdir="${1}"
 	local sourcetype="${2}"
@@ -174,6 +225,7 @@ Download() {
 	elif [ "${sourcetype}" = "RSYNC" ]; then
 		pushd . &> /dev/null
 		cd "${tempdir}"
+		local cnt=
 		for cnt in {1..10}
 		do
 			rsync -mrt "${sourcepath}"/* "${sourcebase}" &> /dev/null
@@ -190,6 +242,7 @@ Download() {
 		retvalue="${sourcebase}"
 		popd &> /dev/null
 	elif [ "${sourcetype}" = "AUR" ]; then
+		local cnt=
 		for cnt in {1..10}
 		do
 			wget "${sourcepath}" -O "${tempdir}/${sourcebase}" &> /dev/null
@@ -211,6 +264,7 @@ Download() {
 	elif [ "${sourcetype}" = "SVN" ]; then
 		pushd . &> /dev/null
 		cd "${tempdir}"
+		local cnt=
 		for cnt in {1..10}
 		do
 			svn co "${sourcepath}" "${sourcebase}" &> /dev/null
@@ -229,6 +283,7 @@ Download() {
 	elif [ "${sourcetype}" = "GIT" ]; then
 		pushd . &> /dev/null
 		cd "${tempdir}"
+		local cnt=
 		for cnt in {1..10}
 		do
 			git clone "${sourcepath}" "${sourcebase}"
@@ -251,6 +306,7 @@ Download() {
 		pushd . &> /dev/null
 		mkdir -p "${tempdir}/${sourcebase}"
 		cd "${sourcepath}"
+		local f=
 		for f in $(ls -a --ignore=. --ignore=.. --ignore=*.pkg.tar.* --ignore=SOURCE)
 		do
 			cp -ar "${f}" "${tempdir}/${sourcebase}/"
@@ -267,67 +323,37 @@ Download() {
 	return 0
 }
 
-ProcessPkgVer() {
-	local retvalue=
-	local downloadpath="${1}"
 
-	pushd . &> /dev/null
-	cd "${downloadpath}"
-	
-	unset pkgver
-	unset -f pkgver
-	alias eval="echo"
-	L_ENV_DISABLE_PROMPT=1 source ./PKGBUILD &> /dev/null
-	unalias eval
-	if [ ! -z "$(declare -f pkgver)" ]; then
-		makepkg --nobuild -Acdf > /dev/null
-		if [ "$?" != "0" ]; then
-			retvalue=1
-		else
-			retvalue=0
-		fi
-	fi
-	unset pkgver
-	unset -f pkgver
-
-	popd &> /dev/null
-
-	return 0
-}
-
-GetNewVersion() {
-	local retvalue=
-	local downloadpath="${1}"
-
-	pushd . &> /dev/null
-	cd "${downloadpath}"
-	
-	retvalue="$(grep '^pkgver=' PKGBUILD | cut -f 2 -d '=')"
-	popd &> /dev/null
-
-	echo "${retvalue}"
-
-	return 0
-}
-
+#Main
 UPDATE_LIST=
 for src in $(find . -name PKGBUILD -not -path "./arch_meta_PKGBUILDs/*" | sort)
 do
-	CheckVersion "${src}"
+	srcdir="$(dirname "${src}")"
+
+	echo_green "==> " "Start - ${srcdir}"
+
+	fn_check_version "${src}"
 	if [ "$?" = "2" ]; then
-		UPDATE_LIST+=("${src}")
+		UPDATE_LIST+=("${srcdir}")
 	fi
+
+	echo_green "==> " "Done."
+	echo
 done
 
-if [ ! -z "${UPDATE_LIST}" ]; then
-	echo_green "Update List"
+if [ ${#UPDATE_LIST[@]} -gt 1 ]; then
+	echo
+	echo
+	echo_green "==> " "Update List"
 	for update in ${UPDATE_LIST[@]}
 	do
-		echo_blue "${update}"
+		if [ ! -z "${update}" ]; then
+			echo_cyan " -> " "${update}"
+		fi
 	done
+	echo_green "==> " "Done."
+	echo
 fi
-
-unset UPDATE_LIST
 
 exit 0
 
