@@ -39,6 +39,13 @@ if [ -z "$(which rsync 2> /dev/null)" ]; then
 	exit 1
 fi
 
+if [ -x "$(dirname "${0}")/stonecold-repo-check.sh" ]; then
+	"$(dirname "${0}")/stonecold-repo-check.sh"
+	if [ "${?}" != "0" ]; then
+		exit 1
+	fi
+fi
+
 
 #Main
 LOCAL_REPO="stonecold-repo"
