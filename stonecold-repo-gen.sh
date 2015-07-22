@@ -142,7 +142,7 @@ fn_remove_link_from_repo() {
 		do
 			if [ -L "${pkg}" ]; then
 				if [ ! -e "$(readlink ${pkg})" ]; then
-					echo_blue " ->" "Remove ${pkg}"
+					echo_blue " -> " "Remove ${pkg}"
 					rm -rf "${pkg}"
 				fi
 			else
