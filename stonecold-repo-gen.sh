@@ -41,7 +41,7 @@ fi
 
 if [ -x "$(dirname "${0}")/stonecold-repo-check.sh" ]; then
 	"$(dirname "${0}")/stonecold-repo-check.sh"
-	if [ "${?}" != "0" ]; then
+	if [ "${?}" = "1" ]; then
 		exit 1
 	fi
 fi

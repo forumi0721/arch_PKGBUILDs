@@ -110,9 +110,9 @@ fn_check_pkgbuild() {
 	done
 
 	if [ ${#list1[@]} -gt 1 -o ${#list2[@]} -gt 1 ]; then
-		retval=1
 		echo_blue " -> " "$(dirname "${pkgbuild}")"
 		if [ ${#list1[@]} -gt 1 ]; then
+			retval=2
 			local list=
 			for list in ${list1[@]}
 			do
@@ -122,6 +122,7 @@ fn_check_pkgbuild() {
 			done
 		fi
 		if [ ${#list2[@]} -gt 1 ]; then
+			retval=1
 			local list=
 			for list in ${list2[@]}
 			do
