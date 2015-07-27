@@ -37,8 +37,11 @@ echo_cyan() {
 fn_check_version() {
 	local retvalue=0
 
-	local pkgfile="${1}"
-	local pkgdir="$(dirname "${pkgfile}")"
+	pushd . &>/dev/null
+	cd "${1}"
+	local pkgfile="$(pwd)/PKGBUILD"
+	local pkgdir="$(pwd)"
+	popd &> /dev/null
 
 	rm -rf /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
 
@@ -107,7 +110,7 @@ fn_check_version() {
 	echo_blue " -> " "Get source..."
 
 	local tempdir="$(mktemp -p /var/tmp -d)"
-	local downloadpath="$(fn_download "${tempdir}" "${sourcetype}" "${sourcepath}")"
+	local downloadpath="$(fn_download "${pkgdir}" "${tempdir}" "${sourcetype}" "${sourcepath}")"
 	if [ "$?" = "1" ]; then
 		echo_red "Cannot find source"
 		rm -rf "${tempdir}"
@@ -127,6 +130,11 @@ fn_check_version() {
 		rm -rf "${tempdir}"
 		return 1
 	fi
+	if [ ! -e "${downloadpath}/PKGBUILD" ]; then
+		echo_red "Cannot found download path : ${downloadpath}"
+		rm -rf "${tempdir}"
+		return 1
+	fi
 
 	#GetNewPkgversion
 	echo_blue " -> " "Get new version..."
@@ -134,6 +142,11 @@ fn_check_version() {
 	pushd . &> /dev/null
 	cd "${downloadpath}"
 	
+	if [ ! -z "$(declare -f GetSourcePatch)" ]; then
+		echo_yellow " -> " "Apply patch..."
+		GetSourcePatch
+	fi
+
 	unset pkgver
 	unset -f pkgver
 	alias eval="echo"
@@ -152,6 +165,14 @@ fn_check_version() {
 	unset pkgver
 	unset -f pkgver
 
+	popd &> /dev/null
+
+	#Check
+	echo_blue " -> " "Compare version..."
+
+	pushd . &> /dev/null
+	cd "${downloadpath}"
+
 	local pkgver2="$(grep '^pkgver=' PKGBUILD | cut -f 2 -d '=')"
 	if [ -z "${pkgver2}" ]; then
 		echo_red "Cannot get pkgver in PKGBUILD"
@@ -161,16 +182,15 @@ fn_check_version() {
 
 	popd &> /dev/null
 
-	#Check
-	echo_blue " -> " "Compare version..."
-
-	if [ "${pkgver1}" = "${pkgver2}" ]; then
+	#if [ "${pkgver1}" = "${pkgver2}" ]; then
+	diff "${pkgfile}" "${downloadpath}/PKGBUILD" &> /dev/null
+	if [ "${?}" = "0" ]; then
 		retvalue=0
 		echo_blue " -> " "Already up-to-date."
 	else
 		retvalue=2
 		echo_cyan " -> " "Current version : ${pkgver1}"
-		echo_cyan " -> " "New version : ${pkgver1}"
+		echo_cyan " -> " "New version : ${pkgver2}"
 		echo_yellow " -> " "Update..."
 		pushd . &> /dev/null
 		cd "${pkgdir}"
@@ -207,10 +227,16 @@ fn_check_version() {
 #Function
 fn_download() {
 	local retvalue=
-	local tempdir="${1}"
-	local sourcetype="${2}"
-	local sourcepath="${3}"
-	local sourcebase="$(basename "${sourcepath}")"
+	local pkgdir="${1}"
+	local tempdir="${2}"
+	local sourcetype="${3}"
+	local sourcepath="${4}"
+	local sourcebase=
+	if [ "${sourcetype}" = "AUR4" ]; then
+		sourcebase="$(basename "${pkgdir}")"
+	else
+		sourcebase="$(basename "${sourcepath}")"
+	fi
 
 	if [ "${sourcetype}" = "ABS" ]; then
 		if [ ! -e "${sourcepath}" ]; then
@@ -259,6 +285,24 @@ fn_download() {
 		cd "${tempdir}"
 		bsdtar -xf "${tempdir}/${sourcebase}"
 		rm -rf "${tempdir}/${sourcebase}"
+		retvalue=$(ls -d */ | cut -d '/' -f 1)
+		popd &> /dev/null
+	elif [ "${sourcetype}" = "AUR4" ]; then
+		local cnt=
+		for cnt in {1..10}
+		do
+			git clone --depth=1 "${sourcepath}" "${tempdir}/${sourcebase}" &> /dev/null
+			if [ "$?" = "0" ]; then
+				break;
+			fi
+			rm -rf "${tempdir}/${sourcebase}"
+		done
+		if [ ! -e "${tempdir}/${sourcebase}" ]; then
+			#echo "Cannot get source"
+			return 2
+		fi
+		pushd . &> /dev/null
+		cd "${tempdir}"
 		retvalue=$(ls -d */ | cut -d '/' -f 1)
 		popd &> /dev/null
 	elif [ "${sourcetype}" = "SVN" ]; then
@@ -332,7 +376,7 @@ do
 
 	echo_green "==> " "Start - ${srcdir}"
 
-	fn_check_version "${src}"
+	fn_check_version "${srcdir}"
 	if [ "$?" = "2" ]; then
 		UPDATE_LIST+=("${srcdir}")
 	fi
