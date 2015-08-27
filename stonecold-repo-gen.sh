@@ -1,35 +1,35 @@
 #!/usr/bin/env bash
 
 echo_white() {
-	echo $'\e[01;0m'${1}$'\e[0m'${2}
+	echo $'\e[01;0m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_gray() {
-	echo $'\e[01;30m'${1}$'\e[0m'${2}
+	echo $'\e[01;30m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_red() {
-	echo $'\e[01;31m'${1}$'\e[0m'${2}
+	echo $'\e[01;31m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_green() {
-	echo $'\e[01;32m'${1}$'\e[0m'${2}
+	echo $'\e[01;32m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_yellow() {
-	echo $'\e[01;33m'${1}$'\e[0m'${2}
+	echo $'\e[01;33m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_blue() {
-	echo $'\e[01;34m'${1}$'\e[0m'${2}
+	echo $'\e[01;34m'"${1}"$'\e[0m'"${2}"
 }
 
 echo_violet() {
-	echo $'\e[01;35m'${1}$'\e[0m '${2}
+	echo $'\e[01;35m'"${1}"$'\e[0m '"${2}"
 }
 
 echo_cyan() {
-	echo $'\e[01;36m'${1}$'\e[0m'${2}
+	echo $'\e[01;36m'"${1}"$'\e[0m'"${2}"
 }
 
 
@@ -115,16 +115,36 @@ fn_remove_pkg_from_repo() {
 		rm -rf "${pkg}"
 	done
 
-	local findcmd="find . \\( ${FIND_OPTION} \\) -not -path \"./${LOCAL_REPO}/*\" -exec basename \"{}\" \\;"
-	local findresult=($(eval ${findcmd}))
+	#local findcmd="find . \\( ${FIND_OPTION} \\) -not -path \"./${LOCAL_REPO}/*\" -exec basename \"{}\" \\;"
+	#local findresult=($(eval ${findcmd}))
+
+	#local findcmd="find \"${LOCAL_REPO}/${PKGDIR}\" -maxdepth 1 \\( ${FIND_OPTION} \\) -exec basename \"{}\" \\;"
+	#local pkg=
+	#for pkg in $(eval ${findcmd})
+	#do
+	#	if [ -z "$(echo "${findresult[@]}" | grep "${pkg}")" ]; then
+	#		echo_blue " -> " "Remove ${LOCAL_REPO}/${PKGDIR}/${pkg}"
+	#		rm -rf "${LOCAL_REPO}/${PKGDIR}/${pkg}"
+	#	fi
+	#done
 
 	local findcmd="find \"${LOCAL_REPO}/${PKGDIR}\" -maxdepth 1 \\( ${FIND_OPTION} \\) -exec basename \"{}\" \\;"
 	local pkg=
 	for pkg in $(eval ${findcmd})
 	do
-		if [ -z "$(echo "${findresult[@]}" | grep "${pkg}")" ]; then
+		local findcmd2="find . -name \"${pkg}\" -not -path \"./${LOCAL_REPO}/*\""
+		local findresult2=($(eval ${findcmd2}))
+
+		if [ -z "${findresult2[0]}" ]; then
 			echo_blue " -> " "Remove ${LOCAL_REPO}/${PKGDIR}/${pkg}"
 			rm -rf "${LOCAL_REPO}/${PKGDIR}/${pkg}"
+		else
+
+			diff "${LOCAL_REPO}/${PKGDIR}/${pkg}" "${findresult2[0]}" &>/dev/null
+			if [ "$?" != "0" ]; then
+				echo_blue " -> " "Remove ${LOCAL_REPO}/${PKGDIR}/${pkg}"
+				rm -rf "${LOCAL_REPO}/${PKGDIR}/${pkg}"
+			fi
 		fi
 	done
 }
