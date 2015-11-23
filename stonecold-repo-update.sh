@@ -207,10 +207,10 @@ fn_check_version() {
 		do
 			cp -ar "${downloadpath}/${f}" ./
 		done
-		if [ ! -z "$(declare -f GetSourcePatch)" ]; then
-			echo_yellow " -> " "Apply patch..."
-			GetSourcePatch
-		fi
+		#if [ ! -z "$(declare -f GetSourcePatch)" ]; then
+		#	echo_yellow " -> " "Apply patch..."
+		#	GetSourcePatch
+		#fi
 		popd &> /dev/null
 	fi
 
