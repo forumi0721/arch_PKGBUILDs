@@ -266,9 +266,6 @@ fn_add_pkg_to_db() {
 			if [ -z "$(echo "${dblist[@]}" | grep "${pkg}")" ]; then
 				repo-add -n ${REPO_NAME}.db.tar.gz ${pkg}
 			fi
-			if [ -z "$(echo "${fileslist[@]}" | grep "${pkg}")" ]; then
-				repo-add -n -f ${REPO_NAME}.files.tar.gz ${pkg}
-			fi
 		done
 		popd &> /dev/null
 	done
