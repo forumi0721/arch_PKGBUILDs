@@ -70,7 +70,8 @@ fn_check_pkgbuild() {
 		local subarch=
 		for subarch in ${arch[@]}
 		do
-			if [ "${subarch}" != "any" -a "${subarch}" != "i686" -a "${subarch}" != "x86_64" -a "${subarch}" != "arm" -a "${subarch}" != "armv6h" -a "${subarch}" != "armv7h" ]; then
+			#if [ "${subarch}" != "any" -a "${subarch}" != "i686" -a "${subarch}" != "x86_64" -a "${subarch}" != "arm" -a "${subarch}" != "armv6h" -a "${subarch}" != "armv7h" ]; then
+			if [ "${subarch}" != "any" -a "${subarch}" != "x86_64" -a "${subarch}" != "armv7h" ]; then
 				continue
 			fi
 			if [ "${name}" = "netatalk" -a "${subarch/arm/}" != "${subarch}" ]; then
