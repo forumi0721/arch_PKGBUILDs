@@ -50,11 +50,17 @@ fn_check_pkgbuild() {
 	unset arch
 	unset epoch
 
+	unset IGNORE_ARCH
+
 	pushd . &>/dev/null
 
 	cd "${pkgbuilddir}"
 
 	source PKGBUILD
+
+	if [ -e SOURCE ]; then
+		source SOURCE
+	fi
 
 	if [ -z "${pkgname}" -o -z "${pkgver}" -o -z "${pkgrel}" -o -z "${arch}" ]; then
 		echo_blue " -> " "$(dirname "${pkgbuild}")"
@@ -74,9 +80,7 @@ fn_check_pkgbuild() {
 			if [ "${subarch}" != "any" -a "${subarch}" != "x86_64" -a "${subarch}" != "armv7h" ]; then
 				continue
 			fi
-			if [ "${name}" = "netatalk" -a "${subarch/arm/}" != "${subarch}" ]; then
-				continue
-			fi
+			case "${IGNORE_ARCH[@]}" in  *"${subarch}"*) continue ;; esac
 			if [ -z "${epoch}" ]; then
 				files+=("$(echo ${name}-${pkgver}-${pkgrel}-${subarch}.pkg.tar.xz)")
 			else
