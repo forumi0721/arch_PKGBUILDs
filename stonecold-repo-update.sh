@@ -43,15 +43,11 @@ fn_check_version() {
 	local pkgdir="$(pwd)"
 	popd &> /dev/null
 
-	rm -rf /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
+	rm -rf /var/tmp/makepkg-repo-${USER}
 
 	#Validation
-	if [ -e "/var/tmp/makepkg-repo-build-${USER}" ]; then
-		echo_red "Cannot delete /var/tmp/makepkg-repo-build-${USER}"
-		return 1
-	fi
-	if [ -e "/var/tmp/makepkg-repo-src-${USER}" ]; then
-		echo_red "Cannot delete /var/tmp/makepkg-repo-src-${USER}"
+	if [ -e "/var/tmp/makepkg-repo-${USER}" ]; then
+		echo_red "Cannot delete /var/tmp/makepkg-repo-${USER}"
 		return 1
 	fi
 
@@ -113,26 +109,26 @@ fn_check_version() {
 	local downloadpath="$(fn_download "${pkgdir}" "${tempdir}" "${sourcetype}" "${sourcepath}")"
 	if [ "$?" = "1" ]; then
 		echo_red "Cannot find source"
-		rm -rf "${tempdir}"
+		rm -rf "${tempdir}" "${downloadpath}"
 		return 1
 	elif [ "$?" = "2" ]; then
 		echo_red "Cannot get source"
-		rm -rf "${tempdir}"
+		rm -rf "${tempdir}" "${downloadpath}"
 		return 1
 	elif [ "$?" = "3" ]; then
 		echo_red "Unknown source type"
-		rm -rf "${tempdir}"
+		rm -rf "${tempdir}" "${downloadpath}"
 		return 1
 	fi
 
 	if [ ! -e "${downloadpath}" ]; then
 		echo_red "Cannot found download path : ${downloadpath}"
-		rm -rf "${tempdir}"
+		rm -rf "${tempdir}" "${downloadpath}"
 		return 1
 	fi
 	if [ ! -e "${downloadpath}/PKGBUILD" ]; then
 		echo_red "Cannot found download path : ${downloadpath}"
-		rm -rf "${tempdir}"
+		rm -rf "${tempdir}" "${downloadpath}"
 		return 1
 	fi
 
@@ -154,13 +150,25 @@ fn_check_version() {
 	unalias eval
 	if [ ! -z "$(declare -f pkgver)" ]; then
 		echo_yellow " -> " "Execute makepkg..."
-		mkdir -p /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
-		BUILDDIR=/var/tmp/makepkg-repo-build-${USER} SRCDEST=/var/tmp/makepkg-repo-src-${USER} makepkg --nobuild -Acdf &> /dev/null
+		#mkdir -p /var/tmp/makepkg-repo-build-${USER} /var/tmp/makepkg-repo-src-${USER}
+		#BUILDDIR=/var/tmp/makepkg-repo-build-${USER} SRCDEST=/var/tmp/makepkg-repo-src-${USER} makepkg --nobuild -Acdf &> /dev/null
+		pushd . &> /dev/null
+		mkdir -p /var/tmp/makepkg-repo-${USER}
+		cp -ar "${downloadpath}" /var/tmp/makepkg-repo-${USER}/build
+		cd /var/tmp/makepkg-repo-${USER}/build
+		makepkg --nobuild -Acdf &> /dev/null
+		#makepkg --nobuild -Acdf
 		if [ "$?" != "0" ]; then
 			echo_red "makepkg failed"
-			rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
+			exit
+			popd &> /dev/null
+			popd &> /dev/null
+			rm -rf "${tempdir}" "/var/tmp/makepkg-repo-${USER}"
 			return 1
+		else
+			cp -f /var/tmp/makepkg-repo-${USER}/build/PKGBUILD "${downloadpath}/PKGBUILD"
 		fi
+		popd &> /dev/null
 	fi
 	unset pkgver
 	unset -f pkgver
@@ -176,7 +184,8 @@ fn_check_version() {
 	local pkgver2="$(grep '^pkgver=' PKGBUILD | cut -f 2 -d '=')"
 	if [ -z "${pkgver2}" ]; then
 		echo_red "Cannot get pkgver in PKGBUILD"
-		rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
+		popd &> /dev/null
+		rm -rf "${tempdir}" "/var/tmp/makepkg-repo-${USER}"
 		return 1 
 	fi
 
@@ -216,7 +225,7 @@ fn_check_version() {
 
 	#Cleanup
 	echo_blue " -> " "Cleanup..."
-	rm -rf "${tempdir}" "/var/tmp/makepkg-repo-build-${USER}" "/var/tmp/makepkg-repo-src-${USER}"
+	rm -rf "${tempdir}" "/var/tmp/makepkg-repo-${USER}"
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
