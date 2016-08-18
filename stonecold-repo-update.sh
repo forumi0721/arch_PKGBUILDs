@@ -78,6 +78,7 @@ fn_check_version() {
 	unset SOURCETYPE
 	unset SOURCEPATH
 	unset -f GetSourcePatch
+	unset -f CheckUpdate
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		L_ENV_DISABLE_PROMPT=1 source "${pkgdir}/SOURCE"
@@ -138,6 +139,10 @@ fn_check_version() {
 	pushd . &> /dev/null
 	cd "${downloadpath}"
 	
+	if [ ! -z "$(declare -f CheckUpdate)" ]; then
+		echo_yellow " -> " "Check Update..."
+		CheckUpdate
+	fi
 	if [ ! -z "$(declare -f GetSourcePatch)" ]; then
 		echo_yellow " -> " "Apply patch..."
 		GetSourcePatch
