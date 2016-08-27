@@ -52,12 +52,12 @@ fn_check_version() {
 	fi
 
 	if [ -e "${pkgdir}/SOURCE" ]; then
-		if [ ! -z "$(grep '^LOCALPKGVER="Y"$' ${pkgdir}/SOURCE)" ]; then
-			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
+		if [ ! -z "$(grep '^HOLDPKGVER="Y"$' ${pkgdir}/SOURCE)" ]; then
+			echo_yellow " -> " "Skip (HOLDPKGVER=Y)"
 			return 1 
 		fi
-		if [ ! -z "$(grep '^LOCALPKGVER=Y$' ${pkgdir}/SOURCE)" ]; then
-			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
+		if [ ! -z "$(grep '^HOLDPKGVER=Y$' ${pkgdir}/SOURCE)" ]; then
+			echo_yellow " -> " "Skip (HOLDPKGVER=Y)"
 			return 1 
 		fi
 	fi
@@ -83,8 +83,8 @@ fn_check_version() {
 	if [ -e "${pkgdir}/SOURCE" ]; then
 		L_ENV_DISABLE_PROMPT=1 source "${pkgdir}/SOURCE"
 
-		if [ "${LOCALPKGVER}" = "Y" ]; then
-			echo_yellow " -> " "Skip (LOCALPKGVER=Y)"
+		if [ "${HOLDPKGVER}" = "Y" ]; then
+			echo_yellow " -> " "Skip (HOLDPKGVER=Y)"
 			return 1 
 		fi
 
